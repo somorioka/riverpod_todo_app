@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import '../models/todo.dart';
+import '../providers/todo_provider.dart';
 
-class TodoDetailScreen extends StatefulWidget {
-  final TodoItem? todo;
+class TodoDetailScreen extends ConsumerStatefulWidget {
+  final String? todoId;
 
-  const TodoDetailScreen({super.key, this.todo});
+  const TodoDetailScreen({super.key, this.todoId});
 
   @override
-  State<TodoDetailScreen> createState() => _TodoDetailScreenState();
+  ConsumerState<TodoDetailScreen> createState() => _TodoDetailScreenState();
 }
 
-class _TodoDetailScreenState extends State<TodoDetailScreen> {
+class _TodoDetailScreenState extends ConsumerState<TodoDetailScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late TodoStatus _status;
@@ -20,10 +23,24 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.todo?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: widget.todo?.description ?? '');
-    _status = widget.todo?.status ?? TodoStatus.todo;
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _status = TodoStatus.todo;
+
+    // 編集モードの場合、初期値を設定
+    if (widget.todoId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final todo = ref
+            .read(todoListProvider)
+            .firstWhere((todo) => todo.id == widget.todoId);
+
+        _titleController.text = todo.title;
+        _descriptionController.text = todo.description;
+        setState(() {
+          _status = todo.status;
+        });
+      });
+    }
   }
 
   @override
@@ -33,20 +50,44 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     super.dispose();
   }
 
-  // これらのメソッドはダミーの実装です。後でRiverpodで置き換えます
   void _saveTodo() {
     if (!_formKey.currentState!.validate()) return;
 
-    // Riverpodの実装時にデータ保存ロジックに置き換えます
+    final todoNotifier = ref.read(todoListProvider.notifier);
+
+    if (widget.todoId == null) {
+      // 新規作成の場合
+      todoNotifier.addTodo(
+        _titleController.text,
+        _descriptionController.text,
+        _status,
+      );
+    } else {
+      // 更新の場合
+      final existingTodo = ref
+          .read(todoListProvider)
+          .firstWhere((todo) => todo.id == widget.todoId);
+
+      final updatedTodo = existingTodo.copyWith(
+        title: _titleController.text,
+        description: _descriptionController.text,
+        status: _status,
+      );
+
+      todoNotifier.updateTodo(updatedTodo);
+    }
+
     Navigator.pop(context);
   }
 
   void _deleteTodo() {
+    if (widget.todoId == null) return;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('削除の確認'),
-        content: Text('「${widget.todo!.title}」を削除してもよろしいですか？'),
+        content: Text('「${_titleController.text}」を削除してもよろしいですか？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -54,7 +95,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           ),
           TextButton(
             onPressed: () {
-              // Riverpodの実装時に削除ロジックに置き換えます
+              ref.read(todoListProvider.notifier).deleteTodo(widget.todoId!);
               Navigator.pop(context); // ダイアログを閉じる
               Navigator.pop(context); // 詳細画面を閉じる
             },
@@ -70,7 +111,14 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isEditing = widget.todo != null;
+    final bool isEditing = widget.todoId != null;
+
+    // 編集中のTODOを取得
+    final Todo? todo = isEditing
+        ? ref
+            .watch(todoListProvider)
+            .firstWhereOrNull((todo) => todo.id == widget.todoId)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -155,7 +203,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                 ),
               ),
             ),
-            if (isEditing) ...[
+            if (isEditing && todo != null) ...[
               const SizedBox(height: 16),
               Card(
                 child: Padding(
@@ -172,8 +220,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        DateFormat('yyyy年MM月dd日 HH:mm')
-                            .format(widget.todo!.createdAt),
+                        DateFormat('yyyy年MM月dd日 HH:mm').format(todo.createdAt),
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey.shade700,

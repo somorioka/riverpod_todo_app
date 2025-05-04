@@ -4,7 +4,7 @@ import '../models/todo.dart';
 import 'status_badge.dart';
 
 class TodoItemWidget extends StatelessWidget {
-  final TodoItem todo;
+  final Todo todo;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 

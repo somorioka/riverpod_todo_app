@@ -1,56 +1,32 @@
-// TODO: 後でfreezedを使って実装する
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:flutter/foundation.dart';
+
+part 'todo.freezed.dart';
 
 enum TodoStatus {
   todo,
   inProgress,
-  done,
+  done;
+
+  String getStatusText() {
+    switch (this) {
+      case TodoStatus.todo:
+        return 'Todo';
+      case TodoStatus.inProgress:
+        return '進行中';
+      case TodoStatus.done:
+        return '完了';
+    }
+  }
 }
 
-// ダミーデータ用の簡易TodoItemクラス
-class TodoItem {
-  final String id;
-  final String title;
-  final String description;
-  final TodoStatus status;
-  final DateTime createdAt;
-
-  TodoItem({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.status,
-    required this.createdAt,
-  });
+@freezed
+class Todo with _$Todo {
+  const factory Todo({
+    required String id,
+    required String title,
+    required String description,
+    required TodoStatus status,
+    required DateTime createdAt,
+  }) = _Todo;
 }
-
-// ダミーデータ
-final List<TodoItem> dummyTodos = [
-  TodoItem(
-    id: '1',
-    title: 'Flutterの基礎を学ぶ',
-    description: 'Widgetの概念、状態管理、ナビゲーションについて学習する',
-    status: TodoStatus.done,
-    createdAt: DateTime.now().subtract(const Duration(days: 10)),
-  ),
-  TodoItem(
-    id: '2',
-    title: 'Riverpodを理解する',
-    description: 'Providerの種類、使い方、StateNotifierの実装方法を理解する',
-    status: TodoStatus.inProgress,
-    createdAt: DateTime.now().subtract(const Duration(days: 5)),
-  ),
-  TodoItem(
-    id: '3',
-    title: 'TODOアプリを完成させる',
-    description: 'Riverpodを使ってTODOアプリの状態管理を実装し、CRUDを完成させる',
-    status: TodoStatus.todo,
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-  ),
-  TodoItem(
-    id: '4',
-    title: 'UIをブラッシュアップする',
-    description: 'アニメーションを追加し、レスポンシブ対応を行う',
-    status: TodoStatus.todo,
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-  ),
-];
