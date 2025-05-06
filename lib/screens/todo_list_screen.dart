@@ -120,8 +120,8 @@ class TodoListWidget extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               filterStatus == null
-                  ? 'TODOがありません'
-                  : '${filterStatus?.getStatusText()}のタスクがありません',
+                  ? 'タスクがありません'
+                  : '${TodoStatus.getStatusText(filterStatus ?? TodoStatus.todo)}のタスクがありません',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,

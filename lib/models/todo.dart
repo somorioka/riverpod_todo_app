@@ -8,8 +8,8 @@ enum TodoStatus {
   inProgress,
   done;
 
-  String getStatusText() {
-    switch (this) {
+  static String getStatusText(TodoStatus status) {
+    switch (status) {
       case TodoStatus.todo:
         return 'Todo';
       case TodoStatus.inProgress:

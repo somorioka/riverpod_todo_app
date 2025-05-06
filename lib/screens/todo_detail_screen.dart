@@ -36,9 +36,7 @@ class _TodoDetailScreenState extends ConsumerState<TodoDetailScreen> {
 
         _titleController.text = todo.title;
         _descriptionController.text = todo.description;
-        setState(() {
-          _status = todo.status;
-        });
+        _status = todo.status;
       });
     }
   }
