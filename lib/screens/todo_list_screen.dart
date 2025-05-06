@@ -1,44 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_todo_app/providers/todo_provider.dart';
 import '../models/todo.dart';
 import '../widgets/todo_item.dart';
 import 'todo_detail_screen.dart';
 
-class TodoListScreen extends StatefulWidget {
+class TodoListScreen extends ConsumerStatefulWidget {
   const TodoListScreen({super.key});
 
   @override
-  State<TodoListScreen> createState() => _TodoListScreenState();
+  ConsumerState<TodoListScreen> createState() => _TodoListScreenState();
 }
 
-class _TodoListScreenState extends State<TodoListScreen>
+class _TodoListScreenState extends ConsumerState<TodoListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<TodoItem> todos = dummyTodos;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        TodoStatus? newFilter;
+        switch (_tabController.index) {
+          case 0: // すべて
+            newFilter = null;
+            break;
+          case 1: // Todo
+            newFilter = TodoStatus.todo;
+            break;
+          case 2: // 進行中
+            newFilter = TodoStatus.inProgress;
+            break;
+          case 3: // 完了
+            newFilter = TodoStatus.done;
+            break;
+        }
+
+        // フィルター更新
+        ref.read(selectedFilterProvider.notifier).setFilter(newFilter);
+      }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  // このメソッドはダミーの実装です。後でRiverpodで置き換えます
-  void _deleteTodo(String id) {
-    setState(() {
-      todos = todos.where((todo) => todo.id != id).toList();
-    });
-  }
-
-  List<TodoItem> _getFilteredTodos(TodoStatus? status) {
-    if (status == null) {
-      return todos;
-    }
-    return todos.where((todo) => todo.status == status).toList();
   }
 
   @override
@@ -58,11 +68,11 @@ class _TodoListScreenState extends State<TodoListScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildTodoList(null),
-          _buildTodoList(TodoStatus.todo),
-          _buildTodoList(TodoStatus.inProgress),
-          _buildTodoList(TodoStatus.done),
+        children: const [
+          TodoListWidget(filterStatus: null),
+          TodoListWidget(filterStatus: TodoStatus.todo),
+          TodoListWidget(filterStatus: TodoStatus.inProgress),
+          TodoListWidget(filterStatus: TodoStatus.done),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -70,7 +80,7 @@ class _TodoListScreenState extends State<TodoListScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const TodoDetailScreen(todo: null),
+              builder: (context) => const TodoDetailScreen(),
             ),
           );
         },
@@ -78,11 +88,26 @@ class _TodoListScreenState extends State<TodoListScreen>
       ),
     );
   }
+}
 
-  Widget _buildTodoList(TodoStatus? filterStatus) {
-    final filteredTodos = _getFilteredTodos(filterStatus);
+class TodoListWidget extends ConsumerWidget {
+  final TodoStatus? filterStatus;
 
-    if (filteredTodos.isEmpty) {
+  const TodoListWidget({super.key, this.filterStatus});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<Todo> todos;
+    if (filterStatus == null) {
+      todos = ref.watch(todoListProvider);
+    } else {
+      todos = ref
+          .watch(todoListProvider)
+          .where((todo) => todo.status == filterStatus)
+          .toList();
+    }
+
+    if (todos.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -95,8 +120,8 @@ class _TodoListScreenState extends State<TodoListScreen>
             const SizedBox(height: 16),
             Text(
               filterStatus == null
-                  ? 'TODOがありません'
-                  : '${_getStatusText(filterStatus)}のTODOがありません',
+                  ? 'タスクがありません'
+                  : '${TodoStatus.getStatusText(filterStatus ?? TodoStatus.todo)}のタスクがありません',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -108,34 +133,24 @@ class _TodoListScreenState extends State<TodoListScreen>
     }
 
     return ListView.builder(
-      itemCount: filteredTodos.length,
+      itemCount: todos.length,
       padding: const EdgeInsets.only(bottom: 80),
       itemBuilder: (context, index) {
-        final todo = filteredTodos[index];
+        final todo = todos[index];
         return TodoItemWidget(
           todo: todo,
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => TodoDetailScreen(todo: todo),
+                builder: (context) => TodoDetailScreen(todoId: todo.id),
               ),
             );
           },
-          onDelete: () => _deleteTodo(todo.id),
+          onDelete: () =>
+              ref.read(todoListProvider.notifier).deleteTodo(todo.id),
         );
       },
     );
-  }
-
-  String _getStatusText(TodoStatus status) {
-    switch (status) {
-      case TodoStatus.todo:
-        return 'Todo';
-      case TodoStatus.inProgress:
-        return '進行中';
-      case TodoStatus.done:
-        return '完了';
-    }
   }
 }
